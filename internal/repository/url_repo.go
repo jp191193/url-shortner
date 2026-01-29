@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jay-ponkia/go-url-shortener/internal/db"
 )
@@ -14,9 +15,15 @@ func NewURLRepo() *URLRepo {
 	return &URLRepo{}
 }
 
+type URLRecord struct {
+	ShortCode   string    `json:"short_code"`
+	OriginalURL string    `json:"original_url"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 func (r *URLRepo) Save(shortCode, originalURL string) error {
 	query := `INSERT INTO urls (short_code, original_url, created_at) 
-              VALUES ($1, $2, CURRENT_TIMESTAMP)`
+			  VALUES ($1, $2, CURRENT_TIMESTAMP)`
 
 	_, err := db.GetDB().Exec(query, shortCode, originalURL)
 	if err != nil {
@@ -42,4 +49,32 @@ func (r *URLRepo) Get(shortCode string) (string, error) {
 	}
 
 	return originalURL, nil
+}
+
+// GetAll returns all URL records from the database
+func (r *URLRepo) GetAll() ([]URLRecord, error) {
+	query := `SELECT short_code, original_url, created_at FROM urls ORDER BY created_at DESC`
+
+	rows, err := db.GetDB().Query(query)
+	if err != nil {
+		log.Printf("Error querying all URLs: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []URLRecord
+	for rows.Next() {
+		var rec URLRecord
+		if err := rows.Scan(&rec.ShortCode, &rec.OriginalURL, &rec.CreatedAt); err != nil {
+			log.Printf("Error scanning URL row: %v", err)
+			return nil, err
+		}
+		results = append(results, rec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }

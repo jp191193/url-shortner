@@ -13,6 +13,8 @@ type Config struct {
 	DBName     string
 	BaseURL    string
 	Port       string
+	RedisAddr  string
+	CacheTTL   string
 }
 
 func LoadConfig() *Config {
@@ -24,6 +26,8 @@ func LoadConfig() *Config {
 		DBName:     getEnv("DB_NAME", "url_shortner"),
 		BaseURL:    getEnv("BASE_URL", "http://localhost:8080"),
 		Port:       getEnv("PORT", ":8080"),
+		RedisAddr:  getEnv("REDIS_ADDR", "localhost:6379"),
+		CacheTTL:   getEnv("CACHE_TTL", "5"),
 	}
 }
 

@@ -1,9 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jay-ponkia/go-url-shortener/internal/cache"
 	"github.com/jay-ponkia/go-url-shortener/internal/config"
 	"github.com/jay-ponkia/go-url-shortener/internal/db"
 	"github.com/jay-ponkia/go-url-shortener/internal/handler"
@@ -25,9 +29,21 @@ func main() {
 	}
 	defer db.Close()
 
+	// Initialize Redis cache
+	redisCache, err := cache.NewRedisCache(cfg.RedisAddr)
+	if err != nil {
+		log.Fatalf("Failed to initialize Redis cache: %v. Make sure Redis is running on %s", err, cfg.RedisAddr)
+	}
+	defer redisCache.Close()
+
+	// Parse cache TTL
+	cacheTTLSeconds, _ := strconv.Atoi(cfg.CacheTTL)
+	fmt.Printf("CacheTTLSeconds from Config %d", cacheTTLSeconds)
+	cacheTTL := 5 * time.Second
+
 	app := fiber.New()
 	repo := repository.NewURLRepo()
-	svc := service.NewURLService(repo)
+	svc := service.NewURLService(repo, redisCache, cacheTTL)
 
 	// Register all routes
 	handler.RegisterRoutes(app, svc, cfg)
