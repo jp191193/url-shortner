@@ -1,6 +1,23 @@
-# URL Shortener
+# URL Shortener (Go + Rediss + PostgreSQL)
 
-A simple URL shortening service that converts long URLs into short, shareable links.
+A fast, clean, and production-style **URL Shortner** built using **Go**, **Redis**, and **PostgreSQL**, following **Clean Architecture** principles.
+
+This project demonstrates:
+
+- High-performance Go backend.
+- Redis caching (cache-aside pattern).
+- PostgreSQL persistent storage.
+- Modular, scalable, test-friendly architecture.
+- Professional folder structure.
+
+Perfect for learning Go, improving system design skills, or showcasing backend engineering expertise.
+
+---
+
+## ⭐ Features
+
+- 🔗 Generate short URLs
+- 🚀 Fast redirects using redis cache
 
 ## Features
 
