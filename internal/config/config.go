@@ -27,7 +27,7 @@ func LoadConfig() *Config {
 		BaseURL:    getEnv("BASE_URL", "http://localhost:8080"),
 		Port:       getEnv("PORT", ":8080"),
 		RedisAddr:  getEnv("REDIS_ADDR", "localhost:6379"),
-		CacheTTL:   getEnv("CACHE_TTL", "5"),
+		CacheTTL:   getEnv("CACHE_TTL", "3600"), // default to 1 hour
 	}
 }
 

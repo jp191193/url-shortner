@@ -39,7 +39,7 @@ func main() {
 	// Parse cache TTL
 	cacheTTLSeconds, _ := strconv.Atoi(cfg.CacheTTL)
 	fmt.Printf("CacheTTLSeconds from Config %d", cacheTTLSeconds)
-	cacheTTL := 5 * time.Second
+	cacheTTL := time.Duration(cacheTTLSeconds) * time.Second
 
 	app := fiber.New()
 	repo := repository.NewURLRepo()

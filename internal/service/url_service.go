@@ -42,6 +42,12 @@ func (s *URLService) CreateShortURL(originalURL string) (string, error) {
 		// Don't return error, cache is optional
 	}
 
+	// Invalidate the all_urls cache since we added a new URL
+	if err := s.cache.Delete(ctx, "all_urls"); err != nil {
+		log.Printf("Warning: Failed to invalidate all_urls cache: %v", err)
+		// Don't return error, cache invalidation is optional
+	}
+
 	return shortCode, nil
 }
 
