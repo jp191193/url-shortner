@@ -8,22 +8,30 @@ import (
 	"time"
 
 	"github.com/jay-ponkia/go-url-shortener/internal/cache"
+	"github.com/jay-ponkia/go-url-shortener/internal/queue"
 	"github.com/jay-ponkia/go-url-shortener/internal/repository"
 	"github.com/jay-ponkia/go-url-shortener/internal/utils"
 )
 
 type URLService struct {
-	repo     *repository.URLRepo
-	cache    *cache.RedisCache
-	cacheTTL time.Duration
+	repo       *repository.URLRepo
+	cache      *cache.RedisCache
+	cacheTTL   time.Duration
+	clickQueue *queue.ClickQueue
 }
 
 func NewURLService(repo *repository.URLRepo, cache *cache.RedisCache, cacheTTL time.Duration) *URLService {
 	return &URLService{
-		repo:     repo,
-		cache:    cache,
-		cacheTTL: cacheTTL,
+		repo:       repo,
+		cache:      cache,
+		cacheTTL:   cacheTTL,
+		clickQueue: nil,
 	}
+}
+
+// SetClickQueue sets the click queue for async click processing
+func (s *URLService) SetClickQueue(q *queue.ClickQueue) {
+	s.clickQueue = q
 }
 
 func (s *URLService) CreateShortURL(originalURL string, alias string) (string, error) {
@@ -69,6 +77,8 @@ func (s *URLService) GetURL(shortCode string) (string, error) {
 	cachedURL, err := s.cache.Get(ctx, shortCode)
 	if err == nil {
 		fmt.Println("Cache hit for short code: %s", shortCode)
+		// Enqueue click asynchronously (non-blocking)
+		go s.enqueueClick(shortCode)
 		return cachedURL, nil
 	}
 
@@ -84,7 +94,21 @@ func (s *URLService) GetURL(shortCode string) (string, error) {
 		// Don't return error, cache is optional
 	}
 
+	// Enqueue click asynchronously (non-blocking)
+	go s.enqueueClick(shortCode)
+
 	return originalURL, nil
+}
+
+// enqueueClick safely enqueues a click event
+func (s *URLService) enqueueClick(shortCode string) {
+	if s.clickQueue == nil {
+		return
+	}
+
+	if err := s.clickQueue.EnqueueClick(shortCode); err != nil {
+		log.Printf("Error enqueuing click for %s: %v", shortCode, err)
+	}
 }
 
 func (s *URLService) ResetAllURLsCache() error {

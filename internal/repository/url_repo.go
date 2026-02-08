@@ -52,6 +52,29 @@ func (r *URLRepo) Get(shortCode string) (string, error) {
 	return originalURL, nil
 }
 
+// IncrementClickCount increments the click count for a short code by the given amount
+func (r *URLRepo) IncrementClickCount(shortCode string, count int) error {
+	query := `UPDATE urls SET click_count = click_count + $1 WHERE short_code = $2`
+
+	result, err := db.GetDB().Exec(query, count, shortCode)
+	if err != nil {
+		log.Printf("Error incrementing click count for %s: %v", shortCode, err)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected: %v", err)
+		return err
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("Warning: No rows updated for short code %s", shortCode)
+	}
+
+	return nil
+}
+
 // GetAll returns all URL records from the database
 func (r *URLRepo) GetAll() ([]URLRecord, error) {
 	query := `SELECT short_code, original_url, created_at FROM urls ORDER BY created_at DESC`

@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,8 +15,10 @@ import (
 	"github.com/jay-ponkia/go-url-shortener/internal/db"
 	"github.com/jay-ponkia/go-url-shortener/internal/handler"
 	"github.com/jay-ponkia/go-url-shortener/internal/listener"
+	"github.com/jay-ponkia/go-url-shortener/internal/queue"
 	"github.com/jay-ponkia/go-url-shortener/internal/repository"
 	"github.com/jay-ponkia/go-url-shortener/internal/service"
+	"github.com/jay-ponkia/go-url-shortener/internal/worker"
 	"github.com/joho/godotenv"
 )
 
@@ -45,12 +50,44 @@ func main() {
 	// Start listening for database changes
 	listener.ListenForDBChanges(db.GetDB(), redisCache.Client, cfg.GetDSN())
 
-	app := fiber.New()
+	// Initialize click queue and batch processor
+	// Configuration: batch_size=50, processing_delay=5 seconds
+	// Adjust these values based on your load requirements
+	clickQueue := queue.NewClickQueue(redisCache.Client, 50) // batch size of 50
 	repo := repository.NewURLRepo()
+	batchProcessor := worker.NewBatchProcessor(clickQueue, repo, 50, 5*time.Second)
+	batchProcessor.Start()
+
+	app := fiber.New()
 	svc := service.NewURLService(repo, redisCache, cacheTTL)
+	svc.SetClickQueue(clickQueue)
 
 	// Register all routes
 	handler.RegisterRoutes(app, svc, cfg)
+
+	// Add route for queue stats (monitoring)
+	app.Get("/admin/stats", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"processor": batchProcessor.GetStats(),
+		})
+	})
+
+	// Graceful shutdown
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		log.Println("Shutting down gracefully...")
+
+		// Process remaining clicks before shutdown
+		batchProcessor.ProcessAllPending()
+		batchProcessor.Stop()
+
+		if err := app.Shutdown(); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
 
 	log.Printf("Starting server on %s", cfg.Port)
 	if err := app.Listen(cfg.Port); err != nil {
