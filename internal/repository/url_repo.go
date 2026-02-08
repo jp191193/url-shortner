@@ -21,17 +21,18 @@ type URLRecord struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-func (r *URLRepo) Save(shortCode, originalURL string) error {
-	query := `INSERT INTO urls (short_code, original_url, created_at) 
-			  VALUES ($1, $2, CURRENT_TIMESTAMP)`
+func (r *URLRepo) Save(shortCode, originalURL, alias string) error {
+	query := `INSERT INTO urls (short_code, original_url, alias, created_at) 
+			  VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`
 
-	_, err := db.GetDB().Exec(query, shortCode, originalURL)
+	_, err := db.GetDB().Exec(query, shortCode, originalURL, alias)
 	if err != nil {
 		log.Printf("Error saving URL: %v", err)
 		return err
 	}
 
 	log.Printf("Successfully saved short code: %s", shortCode)
+	log.Printf("Successfully saved alias: %s", alias)
 	return nil
 }
 

@@ -26,9 +26,15 @@ func NewURLService(repo *repository.URLRepo, cache *cache.RedisCache, cacheTTL t
 	}
 }
 
-func (s *URLService) CreateShortURL(originalURL string) (string, error) {
-	shortCode := utils.GenerateShortCode()
-	err := s.repo.Save(shortCode, originalURL)
+func (s *URLService) CreateShortURL(originalURL string, alias string) (string, error) {
+	shortCode := ""
+	if alias == "" {
+		shortCode = utils.GenerateShortCode()
+	} else {
+		shortCode = alias
+	}
+
+	err := s.repo.Save(shortCode, originalURL, alias)
 	if err != nil {
 		return "", err
 	}
@@ -37,8 +43,12 @@ func (s *URLService) CreateShortURL(originalURL string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := s.cache.Set(ctx, shortCode, originalURL, s.cacheTTL); err != nil {
-		log.Printf("Warning: Failed to cache short code %s: %v", shortCode, err)
+	cacheKey := shortCode
+	if alias != "" {
+		cacheKey = alias
+	}
+	if err := s.cache.Set(ctx, cacheKey, originalURL, s.cacheTTL); err != nil {
+		log.Printf("Warning: Failed to cache short code %s: %v", cacheKey, err)
 		// Don't return error, cache is optional
 	}
 

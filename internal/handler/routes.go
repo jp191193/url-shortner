@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jay-ponkia/go-url-shortener/internal/config"
 	"github.com/jay-ponkia/go-url-shortener/internal/service"
+	"github.com/jay-ponkia/go-url-shortener/internal/validation"
 )
 
 func RegisterRoutes(app *fiber.App, svc *service.URLService, cfg *config.Config) {
@@ -22,7 +23,8 @@ func RegisterRoutes(app *fiber.App, svc *service.URLService, cfg *config.Config)
 func shortenURL(svc *service.URLService, cfg *config.Config) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req struct {
-			URL string `json:"url"`
+			URL   string `json:"url"`
+			Alias string `json:"alias,omitempty"`
 		}
 
 		if err := c.BodyParser(&req); err != nil {
@@ -33,7 +35,17 @@ func shortenURL(svc *service.URLService, cfg *config.Config) fiber.Handler {
 			return c.Status(400).JSON(fiber.Map{"error": "URL is required"})
 		}
 
-		shortCode, err := svc.CreateShortURL(req.URL)
+		isValidAlias, err := validation.ValidateAlias(req.Alias)
+		if err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+
+		// Validate URL
+		if !isValidAlias {
+			return c.Status(400).JSON(fiber.Map{"error": "Invalid alias"})
+		}
+
+		shortCode, err := svc.CreateShortURL(req.URL, req.Alias)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to create short URL"})
 		}
