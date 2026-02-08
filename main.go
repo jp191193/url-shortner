@@ -11,6 +11,7 @@ import (
 	"github.com/jay-ponkia/go-url-shortener/internal/config"
 	"github.com/jay-ponkia/go-url-shortener/internal/db"
 	"github.com/jay-ponkia/go-url-shortener/internal/handler"
+	"github.com/jay-ponkia/go-url-shortener/internal/listener"
 	"github.com/jay-ponkia/go-url-shortener/internal/repository"
 	"github.com/jay-ponkia/go-url-shortener/internal/service"
 	"github.com/joho/godotenv"
@@ -40,6 +41,9 @@ func main() {
 	cacheTTLSeconds, _ := strconv.Atoi(cfg.CacheTTL)
 	fmt.Printf("CacheTTLSeconds from Config %d", cacheTTLSeconds)
 	cacheTTL := time.Duration(cacheTTLSeconds) * time.Second
+
+	// Start listening for database changes
+	listener.ListenForDBChanges(db.GetDB(), redisCache.Client, cfg.GetDSN())
 
 	app := fiber.New()
 	repo := repository.NewURLRepo()
